@@ -1,0 +1,16 @@
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\RocketMod_TPA.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\RocketMod_TPA.pdb
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Assembly-CSharp-firstpass.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Assembly-CSharp.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Rocket.API.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Rocket.Core.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Rocket.Unturned.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\UnityEngine.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Pathfinding.JsonFx.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Pathfinding.Ionic.Zip.Reduced.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Pathfinding.ClipperLib.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\Pathfinding.Poly2Tri.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\bin\Debug\UnityEngine.xml
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\obj\Debug\RocketMod_TPA.csprojResolveAssemblyReference.cache
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\obj\Debug\RocketMod_TPA.dll
+C:\Users\LeeIzaZombie\Documents\Visual Studio 2012\Projects\RocketMod_TPA\RocketMod_TPA\obj\Debug\RocketMod_TPA.pdb
