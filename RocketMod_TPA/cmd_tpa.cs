@@ -1,6 +1,8 @@
-﻿using Rocket.Unturned;
+﻿using Rocket.API;
+using Rocket.Unturned;
 using Rocket.Unturned.Commands;
 using Rocket.Unturned.Player;
+using SDG.Unturned;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +15,24 @@ namespace RocketMod_TPA
     public class CommandTPA : IRocketCommand
     {
         #region Delcarations
+        public bool AllowFromConsole
+        {
+            get
+            {
+                return false;
+            }
+        }
+
+        public List<string> Permissions
+        {
+            get
+            {
+                return new List<string>() { 
+                    "CommandTPA.tpa"
+                };
+            }
+        }
+
         public bool RunFromConsole
         {
             get { return false; }
@@ -42,80 +62,131 @@ namespace RocketMod_TPA
         }
 
         Dictionary<Steamworks.CSteamID, Steamworks.CSteamID> requests = new Dictionary<Steamworks.CSteamID, Steamworks.CSteamID>();
+        Dictionary<Steamworks.CSteamID, DateTime> coolDown = new Dictionary<Steamworks.CSteamID, DateTime>();
         #endregion
 
-        public void Execute(RocketPlayer caller, string[] command)
+        public void Execute(IRocketPlayer caller, string[] command)
         {
+            UnturnedPlayer player = (UnturnedPlayer)caller;
             if (command.Length < 1)
             {
-                RocketChat.Say(caller, "TPA allows you to request a teleport to another player.", Color.yellow);
-                RocketChat.Say(caller, "/tpa (playerName) - Sends a teleport request.", Color.yellow);
-                RocketChat.Say(caller, "/tpa accept - Accepts your latest TPA request.", Color.yellow);
-                RocketChat.Say(caller, "/tpa deny - Denys your latest TPA request.", Color.yellow);
+
+                Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("help_line_1"), Color.yellow);
+                Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("help_line_2"), Color.yellow);
+                Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("help_line_3"), Color.yellow);
+                Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("help_line_4"), Color.yellow);
                 return;
             }
 
             if (command[0].ToString().ToLower() == "accept" || command[0].ToString().ToLower() == "a" || command[0].ToString().ToLower() == "yes")
             {
-                if (requests.ContainsKey(caller.CSteamID))
+
+                if (!player.HasPermission("tpa.accept"))
                 {
-                    RocketPlayer tpP = RocketPlayer.FromCSteamID(requests[caller.CSteamID]);
-                    tpP.Teleport(caller);
-                    requests.Remove(caller.CSteamID);
-                    RocketChat.Say(caller, "You have accepted " + tpP.CharacterName + "'s tpa request!", Color.yellow);
-                    RocketChat.Say(tpP, caller.CharacterName + " has accepted your tpa request!", Color.yellow);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_accept"), Color.red);
+                    return;
+                }
+
+                if (requests.ContainsKey(player.CSteamID))
+                {
+                    UnturnedPlayer tpP = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
+                    if (tpP.Stance == EPlayerStance.DRIVING || tpP.Stance == EPlayerStance.SITTING)
+                    {
+                        Rocket.Unturned.Chat.UnturnedChat.Say(tpP, PluginTPA.Instance.Translate("YouInCar"), Color.red);
+                        Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("PlayerInCar"), Color.red);
+                        requests.Remove(player.CSteamID);
+                        return;
+                    }
+                    tpP.Teleport(player);
+                    requests.Remove(player.CSteamID);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_accepted") + " " + tpP.CharacterName, Color.yellow);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(tpP, player.CharacterName + " " + PluginTPA.Instance.Translate("request_accepted_1"), Color.yellow);
                 }
                 else
                 {
-                    RocketChat.Say(caller, "Error: You don't have any tpa requests!", Color.red);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
                 }
+               
             }
             else if (command[0].ToString() == "deny" || command[0].ToString().ToLower() == "d" || command[0].ToString().ToLower() == "no")
             {
-                if (requests.ContainsKey(caller.CSteamID))
+                if (!player.HasPermission("tpa.deny"))
                 {
-                    RocketPlayer tpP = RocketPlayer.FromCSteamID(requests[caller.CSteamID]);
-                    requests.Remove(caller.CSteamID);
-                    RocketChat.Say(caller, "You have denied " + tpP.CharacterName + "'s tpa request!", Color.yellow);
-                    RocketChat.Say(tpP, caller.CharacterName + " has denied your tpa request!", Color.red);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_deny"), Color.red);
+                    return;
+                }
+
+                if (requests.ContainsKey(player.CSteamID))
+                {
+                    UnturnedPlayer tpP = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
+                    requests.Remove(player.CSteamID);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied") + " " + tpP.CharacterName, Color.yellow);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(tpP, player.CharacterName + " " + PluginTPA.Instance.Translate("request_denied_1"), Color.red);
                 }
                 else
                 {
-                    RocketChat.Say(caller, "Error: You don't have any tpa requests!", Color.red);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
                 }
             }
             else //Try sending a tpa request to a player.
             {
-                RocketPlayer rTo = RocketPlayer.FromName(command[0].ToString());
+                if (!player.HasPermission("tpa.send"))
+                {
+                    Rocket.Unturned.Chat.UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_send"), Color.red);
+                    return;
+                }
+                
+
+                UnturnedPlayer rTo = UnturnedPlayer.FromName(command[0].ToString());
 
                 #region Error Checking
                 if (rTo == null)
                 {
-                    RocketChat.Say(caller, "Error: Could not find player!", Color.red);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("playerNotFound"), Color.red);
                     return;
                 }
                 //Need to prevent spam requests.
                 if (requests.ContainsKey(rTo.CSteamID))
                 {
-                    if (requests[rTo.CSteamID] == caller.CSteamID)
+                    if (requests[rTo.CSteamID] == player.CSteamID)
                     {
-                        RocketChat.Say(caller, "Error: You already have a request pending to " + rTo.CharacterName, Color.red);
+                        Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_pending") + " " + rTo.CharacterName, Color.red);
                         return;
                     }
                 }
                 #endregion
 
-                if (requests.ContainsKey(rTo.CSteamID))
+                if (coolDown.ContainsKey(player.CSteamID))
                 {
-                    requests[rTo.CSteamID] = caller.CSteamID;
-                    RocketChat.Say(caller, "You have sent a tpa request to " + rTo.CharacterName, Color.yellow);
-                    RocketChat.Say(rTo, caller.CharacterName + " has sent you a tpa request! use /tpa accept or /tpa deny", Color.yellow);
+                    //Rocket.Unturned.Chat.UnturnedChat.Say(caller, "Debug: " + (DateTime.Now - coolDown[player.CSteamID]).TotalSeconds);
+                    if ((DateTime.Now - coolDown[player.CSteamID]).TotalSeconds < PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds)
+                    {
+                        Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_cooldown"), Color.red);
+                        return;
+                    }
+                    coolDown.Remove(player.CSteamID);
+                }
+
+                if (coolDown.ContainsKey(player.CSteamID))
+                {
+                    coolDown[player.CSteamID] = DateTime.Now;
                 }
                 else
                 {
-                    requests.Add(rTo.CSteamID, caller.CSteamID);
-                    RocketChat.Say(caller, "You have sent a tpa request to " + rTo.CharacterName, Color.yellow);
-                    RocketChat.Say(rTo, caller.CharacterName + " has sent you a tpa request! use /tpa accept if you want them to teleport to you!", Color.yellow);
+                    coolDown.Add(player.CSteamID, DateTime.Now);
+                }
+
+                if (requests.ContainsKey(rTo.CSteamID))
+                {
+                    requests[rTo.CSteamID] = player.CSteamID;
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_sent") + " " + rTo.CharacterName, Color.yellow);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(rTo, player.CharacterName + " " + PluginTPA.Instance.Translate("request_sent_1"), Color.yellow);
+                }
+                else
+                {
+                    requests.Add(rTo.CSteamID, player.CSteamID);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_sent") + " " + rTo.CharacterName, Color.yellow);
+                    Rocket.Unturned.Chat.UnturnedChat.Say(rTo, player.CharacterName + " " + PluginTPA.Instance.Translate("request_sent_1"), Color.yellow);
                 }
             }
 
