@@ -1,6 +1,0 @@
-C:\Users\sven-\Documents\GitHub\TPA\bin\Debug\RocketMod_TPA.dll
-C:\Users\sven-\Documents\GitHub\TPA\bin\Debug\RocketMod_TPA.pdb
-C:\Users\sven-\Documents\GitHub\TPA\bin\Debug\UnityEngine.dll
-C:\Users\sven-\Documents\GitHub\TPA\obj\Debug\TPA.csprojResolveAssemblyReference.cache
-C:\Users\sven-\Documents\GitHub\TPA\obj\Debug\RocketMod_TPA.dll
-C:\Users\sven-\Documents\GitHub\TPA\obj\Debug\RocketMod_TPA.pdb
