@@ -5,3 +5,8 @@ C:\Users\LeeIzaZombie\Documents\RocketMod_TPA\obj\Debug\RocketMod_TPA.dll
 C:\Users\LeeIzaZombie\Documents\RocketMod_TPA\obj\Debug\RocketMod_TPA.pdb
 C:\Users\LeeIzaZombie\Documents\RocketMod_TPA\bin\Release\RocketMod_TPA.dll
 C:\Users\LeeIzaZombie\Documents\RocketMod_TPA\bin\Release\RocketMod_TPA.pdb
+C:\Users\owner\Documents\GitHub\RocketMod_TPA\obj\Debug\TPA.csprojResolveAssemblyReference.cache
+C:\Users\owner\Documents\GitHub\RocketMod_TPA\obj\Debug\RocketMod_TPA.dll
+C:\Users\owner\Documents\GitHub\RocketMod_TPA\bin\Release\RocketMod_TPA.dll
+C:\Users\owner\Documents\GitHub\RocketMod_TPA\bin\Release\RocketMod_TPA.pdb
+C:\Users\owner\Documents\GitHub\RocketMod_TPA\obj\Debug\RocketMod_TPA.pdb
