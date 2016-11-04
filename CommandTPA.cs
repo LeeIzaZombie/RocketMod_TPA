@@ -320,9 +320,9 @@ namespace RocketMod_TPA
         private bool CheckPlayer(Steamworks.CSteamID plr)
         {
             bool flag = false;
-            foreach (SteamPlayer sp in Provider.Players)
+            foreach (SteamPlayer sp in Provider.clients)
             {
-                if (sp.SteamPlayerID.CSteamID == plr)
+                if (sp.playerID.steamID == plr)
                 {
                     flag = true;
                 }
