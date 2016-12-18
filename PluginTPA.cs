@@ -9,7 +9,7 @@ namespace RocketMod_TPA
 {
     public class PluginTPA : RocketPlugin<TPAConfiguration>
     {
-        public static string version = "1.7.0.2";
+        public static string version = "1.7.1.0";
         public static PluginTPA Instance;
 
         public override TranslationList DefaultTranslations
@@ -33,6 +33,7 @@ namespace RocketMod_TPA
                     { "error_cooldown", "You may only send requests every {0} seconds." }, //Updated
                     { "error_bleeding", "You may not teleport when bleeding, resend TPA when you're safe." },
                     { "error_hurt", "You may not teleport when you're hurt!" },
+                    { "error_player_left_server", "TPA has failed, the other player has left the server." }, //New
                     { "help_line_1", "TPA allows you to request a teleport to another player." },
                     { "request_success", "Your teleportation has been successful!" },
                     { "request_accepted", "You've accepted {0} TPA request!" }, //Updated
@@ -43,10 +44,14 @@ namespace RocketMod_TPA
                     { "request_denied_1", "{0} denied your tpa request!" }, //Updated
                     { "request_sent", "You have sent a tpa request to {0}" }, //Updated
                     { "request_sent_1", "{0} sent you a tpa request, do /tpa accept to accept!" }, //Updated
+                    { "request_sent_self", "TPA request failed, can't send to yourself." }, //New
                     { "request_pending", "You already have a request pending to this player." },
                     { "request_none", "You have no requests available!" },
                     { "request_abort", "You have aborted your TPA request." }, //New
-                    { "translation_version_dont_edit", "3" }
+                    { "request_abort_target", "{0} has aborted their request." }, //New
+                    { "teleport_protection_enabled", "TPA teleport protection has been enabled for {0} seconds" },// two for TPA Protection.
+                    { "teleport_protection_disabled", "TPA teleport protection has been disabled, you are now vulnerable." },
+                    { "translation_version_dont_edit", "3" },
                 };
             }
         }
@@ -54,15 +59,17 @@ namespace RocketMod_TPA
         protected override void Load()
         {
             PluginTPA.Instance = this;
-            string str1 = !Configuration.Instance.TPADelay ? "disabled" : "enabled";
-            string str2 = !Configuration.Instance.TPACoolDown ? "disabled" : "enabled";
-            string str3 = !Configuration.Instance.CancelOnBleeding ? "disabled" : "enabled";
-            string str4 = !Configuration.Instance.CancelOnHurt ? "disabled" : "enabled";
-            string str6 = !Configuration.Instance.NinjaTP ? "disabled" : "enabled";
+            string str1 = Configuration.Instance.TPADelay.Format();
+            string str2 = Configuration.Instance.TPACoolDown.Format();
+            string str3 = Configuration.Instance.CancelOnBleeding.Format();
+            string str4 = Configuration.Instance.CancelOnHurt.Format();
+            string str6 = Configuration.Instance.NinjaTP.Format();
+            string str7 = Configuration.Instance.TPATeleportProtection.Format();
             //string str5 = !Configuration.Instance.TPADoubleTap ? "disabled" : "enabled";
             int num1 = Configuration.Instance.TPACoolDownSeconds;
             int num2 = Configuration.Instance.TPADelaySeconds;
             int num4 = Configuration.Instance.NinjaEffectID;
+            int num5 = Configuration.Instance.TPATeleportProtectionSeconds;
             //int num3 = Configuration.Instance.DoubleTapDelaySeconds;
             Logger.LogWarning("TPA by LeeIzaZombie, Version " + PluginTPA.version);
             Logger.LogWarning("...");
@@ -73,6 +80,7 @@ namespace RocketMod_TPA
             Logger.LogWarning("Cancel teleport if bleeding: " + str3);
             //Logger.LogWarning("Double Tap: " + str5 + ", Seconds: " + num3);
             Logger.LogWarning("NinjaTP: " + str6 + ", EffectID: " + num4);
+            Logger.LogWarning("TPA teleport protection: " + str7 + ", Protection time: " + num5);
             Logger.LogWarning("[Delay] Cancel teleport if hurt: " + str4);
             Logger.LogWarning("...");
             Logger.LogWarning("Checking for problems:");
@@ -92,9 +100,14 @@ namespace RocketMod_TPA
                 Logger.LogError("Delay Seconds configuration is invalid, please fix it.");
                 i++;
             }
+            if (Configuration.Instance.TPATeleportProtectionSeconds < 0)
+            {
+                Logger.LogError("Protection time configuration is invalid, please fix it.");
+                i++;
+            }
             if (i != 0)
             {
-                Logger.LogWarning("Error checking done.");
+                Logger.LogWarning("Error checking done, " + i + " configuration errors found!");
             }
             else
             {
@@ -117,7 +130,8 @@ namespace RocketMod_TPA
         {
             if (CommandTPA.requests.ContainsKey(player.CSteamID))
             {
-                CommandTPA.requests.Remove(player.CSteamID);
+                lock (CommandTPA.requests)
+                    CommandTPA.requests.Remove(player.CSteamID);
             }
         }
 
@@ -125,8 +139,18 @@ namespace RocketMod_TPA
         {
             if (CommandTPA.requests.ContainsKey(player.CSteamID))
             {
-                CommandTPA.requests.Remove(player.CSteamID);
+                lock (CommandTPA.requests)
+                    CommandTPA.requests.Remove(player.CSteamID);
             }
+        }
+    }
+
+    public static class Extensions
+    {
+        // Format a boolean to enabled or disabled.
+        public static string Format(this bool value)
+        {
+            return value ? "enabled" : "disabled";
         }
     }
 }

@@ -7,10 +7,11 @@
     <ProjectGuid>{53213EBE-C21A-4A7F-9E6F-6B10347E7A58}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AssemblyName>RocketMod_TPA</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
     <FileAlignment>512</FileAlignment>
     <RootNamespace>RocketMod_TPA</RootNamespace>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
