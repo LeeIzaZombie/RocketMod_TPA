@@ -2,6 +2,7 @@
 using Rocket.Core.Logging;
 using Rocket.Core.Plugins;
 using Rocket.Unturned;
+using Rocket.Unturned.Player;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,7 +10,7 @@ namespace RocketMod_TPA
 {
     public class PluginTPA : RocketPlugin<TPAConfiguration>
     {
-        public static string version = "1.7.1.0";
+        public static string version = "1.7.1.1";
         public static PluginTPA Instance;
 
         public override TranslationList DefaultTranslations
@@ -71,7 +72,7 @@ namespace RocketMod_TPA
             int num4 = Configuration.Instance.NinjaEffectID;
             int num5 = Configuration.Instance.TPATeleportProtectionSeconds;
             //int num3 = Configuration.Instance.DoubleTapDelaySeconds;
-            Logger.LogWarning("TPA by LeeIzaZombie, Version " + PluginTPA.version);
+            Logger.LogWarning("TPA by LeeIzaZombie, Version " + version);
             Logger.LogWarning("...");
             Logger.LogWarning("Current configuration:");
             Logger.LogWarning("...");
@@ -126,16 +127,20 @@ namespace RocketMod_TPA
             U.Events.OnPlayerDisconnected -= TPA_PlayerLeave;
         }
 
-        private void TPA_PlayerLeave(Rocket.Unturned.Player.UnturnedPlayer player)
+        private void TPA_PlayerLeave(UnturnedPlayer player)
         {
-            if (CommandTPA.requests.ContainsKey(player.CSteamID))
+            if (player != null)
             {
-                lock (CommandTPA.requests)
-                    CommandTPA.requests.Remove(player.CSteamID);
+                if (CommandTPA.requests.ContainsKey(player.CSteamID))
+                {
+                    lock (CommandTPA.requests)
+                        CommandTPA.requests.Remove(player.CSteamID);
+                }
+                player.GetComponent<TPAProtectionComponent>().EventCleanup();
             }
         }
 
-        private void TPA_PlayerJoin(Rocket.Unturned.Player.UnturnedPlayer player)
+        private void TPA_PlayerJoin(UnturnedPlayer player)
         {
             if (CommandTPA.requests.ContainsKey(player.CSteamID))
             {

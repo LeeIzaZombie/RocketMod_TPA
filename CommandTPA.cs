@@ -168,8 +168,9 @@ namespace RocketMod_TPA
                         UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
                         lock (requests)
                             requests.Remove(player.CSteamID);
-                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter.CharacterName), Color.yellow);
-                        UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_denied_1", player.CharacterName), Color.red);
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter == null ? "?" : teleporter.CharacterName), Color.yellow);
+                        if (teleporter != null)
+                            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_denied_1", player.CharacterName), Color.red);
                         return;
                     }
                     else
@@ -369,10 +370,11 @@ namespace RocketMod_TPA
         private void TPProtect(UnturnedPlayer target, int protectTime)
         {
             UnturnedPlayerFeatures features = target.GetComponent<UnturnedPlayerFeatures>();
+            TPAProtectionComponent protections = target.GetComponent<TPAProtectionComponent>();
             // Don't execute if the player already has god mode enabled.
-            if (!features.GodMode)
+            if (!features.GodMode && !protections.Protected)
             {
-                features.GodMode = true;
+                protections.Protected = true;
                 UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_enabled", protectTime), Color.yellow);
                 CSteamID tID = target.CSteamID;
                 Thread.Sleep(protectTime * 1000);
@@ -380,7 +382,7 @@ namespace RocketMod_TPA
                 if (target == null || IsInvalid(tID))
                     return;
                 UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_disabled"), Color.yellow);
-                features.GodMode = false;
+                protections.Protected = false;
             }
         }
     }
