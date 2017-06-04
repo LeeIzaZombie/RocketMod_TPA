@@ -1,4 +1,4 @@
-﻿using Rocket.Core.Logging;
+﻿using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
 using System;
 using System.Collections.Generic;
@@ -10,6 +10,8 @@ namespace RocketMod_TPA
     public class TPAProtectionComponent : UnturnedPlayerComponent
     {
         private bool protect = false;
+        internal bool LoginProtection = false;
+        internal DateTime LoginProtectionStart;
         private byte health;
         private byte water;
         private byte food;
@@ -34,7 +36,6 @@ namespace RocketMod_TPA
                     food = Player.Hunger;
                     virus = Player.Infection;
                     health = Player.Health;
-                    // Logger.Log("stats: health: " + health + ", food: " + food + ", water: " + water + ", virus: " + virus);
                 }
                 else
                 {
@@ -52,6 +53,19 @@ namespace RocketMod_TPA
         {
             if (Protected)
                 Protected = false;
+        }
+
+        public void FixedUpdate()
+        {
+            if (PluginTPA.Instance.Configuration.Instance.UseLoginProtection && Protected && LoginProtection)
+            {
+                if ((DateTime.Now - LoginProtectionStart).TotalSeconds > PluginTPA.Instance.Configuration.Instance.LoginProtectionTime)
+                {
+                    LoginProtection = false;
+                    Protected = false;
+                    UnturnedChat.Say(Player, PluginTPA.Instance.Translate("login_protection_disabled", PluginTPA.Instance.Configuration.Instance.LoginProtectionTime), UnityEngine.Color.yellow);
+                }
+            }
         }
 
         private void Events_OnUpdateVirus(UnturnedPlayer player, byte virus)

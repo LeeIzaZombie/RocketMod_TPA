@@ -354,7 +354,7 @@ namespace RocketMod_TPA
         {
             if (PluginTPA.Instance.Configuration.Instance.NinjaTP)
             {
-                EffectManager.sendEffect((ushort)PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
+                EffectManager.sendEffect(PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
             }
             lock (teleportQueue)
             {
@@ -378,8 +378,9 @@ namespace RocketMod_TPA
             UnturnedPlayerFeatures features = target.GetComponent<UnturnedPlayerFeatures>();
             TPAProtectionComponent protections = target.GetComponent<TPAProtectionComponent>();
             // Don't execute if the player already has god mode enabled.
-            if (!features.GodMode && !protections.Protected)
+            if (!features.GodMode && (!protections.Protected || (protections.Protected && protections.LoginProtection)))
             {
+                protections.LoginProtection = false;
                 protections.Protected = true;
                 UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_enabled", protectTime), Color.yellow);
                 CSteamID tID = target.CSteamID;

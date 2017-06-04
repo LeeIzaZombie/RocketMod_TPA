@@ -2,7 +2,9 @@
 using Rocket.Core.Logging;
 using Rocket.Core.Plugins;
 using Rocket.Unturned;
+using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -50,8 +52,10 @@ namespace RocketMod_TPA
                     { "request_none", "You have no requests available!" },
                     { "request_abort", "You have aborted your TPA request." }, //New
                     { "request_abort_target", "{0} has aborted their request." }, //New
-                    { "teleport_protection_enabled", "TPA teleport protection has been enabled for {0} seconds" },// two for TPA Protection.
+                    { "teleport_protection_enabled", "TPA teleport protection has been enabled for {0} seconds." },// two for TPA Protection.
                     { "teleport_protection_disabled", "TPA teleport protection has been disabled, you are now vulnerable." },
+                    { "login_protection_enabled", "Login protection has been enabled on you for {0} seconds." },// two for login protections.
+                    { "login_protection_disabled", "Login protection has been disabled, you are now vulnerable." },
                     { "translation_version_dont_edit", "3" },
                 };
             }
@@ -66,12 +70,12 @@ namespace RocketMod_TPA
             string str4 = Configuration.Instance.CancelOnHurt.Format();
             string str6 = Configuration.Instance.NinjaTP.Format();
             string str7 = Configuration.Instance.TPATeleportProtection.Format();
-            //string str5 = !Configuration.Instance.TPADoubleTap ? "disabled" : "enabled";
+            string str8 = Configuration.Instance.UseLoginProtection.Format();
             int num1 = Configuration.Instance.TPACoolDownSeconds;
             int num2 = Configuration.Instance.TPADelaySeconds;
             int num4 = Configuration.Instance.NinjaEffectID;
             int num5 = Configuration.Instance.TPATeleportProtectionSeconds;
-            //int num3 = Configuration.Instance.DoubleTapDelaySeconds;
+            int num6 = Configuration.Instance.LoginProtectionTime;
             Logger.LogWarning("TPA by LeeIzaZombie, Version " + version);
             Logger.LogWarning("...");
             Logger.LogWarning("Current configuration:");
@@ -79,9 +83,9 @@ namespace RocketMod_TPA
             Logger.LogWarning("Cooldown TPA requests: " + str2 + ", Seconds: " + num1);
             Logger.LogWarning("Delay teleporting: " + str1 + ", Seconds: " + num2);
             Logger.LogWarning("Cancel teleport if bleeding: " + str3);
-            //Logger.LogWarning("Double Tap: " + str5 + ", Seconds: " + num3);
             Logger.LogWarning("NinjaTP: " + str6 + ", EffectID: " + num4);
             Logger.LogWarning("TPA teleport protection: " + str7 + ", Protection time: " + num5);
+            Logger.LogWarning("Login protection: " + str8 + ", Protection time: " + num6);
             Logger.LogWarning("[Delay] Cancel teleport if hurt: " + str4);
             Logger.LogWarning("...");
             Logger.LogWarning("Checking for problems:");
@@ -91,19 +95,24 @@ namespace RocketMod_TPA
                 Logger.LogError("Your translations file is out of date, please reload the plugin after deleting old configuration folder.");
                 i++;
             }
-            if (Configuration.Instance.TPACoolDownSeconds < 0)
+            if (num1 < 0)
             {
                 Logger.LogError("Cooldown Seconds configuration is invalid, please fix it.");
                 i++;
             }
-            if (Configuration.Instance.TPADelaySeconds < 0)
+            if (num2 < 0)
             {
                 Logger.LogError("Delay Seconds configuration is invalid, please fix it.");
                 i++;
             }
-            if (Configuration.Instance.TPATeleportProtectionSeconds < 0)
+            if (num5 < 0)
             {
                 Logger.LogError("Protection time configuration is invalid, please fix it.");
+                i++;
+            }
+            if (num6 < 0)
+            {
+                Logger.LogError("Login protection time is invalid, please fix it.");
                 i++;
             }
             if (i != 0)
@@ -147,6 +156,14 @@ namespace RocketMod_TPA
                 lock (CommandTPA.requests)
                     CommandTPA.requests.Remove(player.CSteamID);
             }
+            if (Configuration.Instance.UseLoginProtection)
+            {
+                TPAProtectionComponent pc = player.GetComponent<TPAProtectionComponent>();
+                pc.LoginProtection = true;
+                pc.LoginProtectionStart = DateTime.Now;
+                pc.Protected = true;
+                UnturnedChat.Say(player, Translate("login_protection_enabled", Configuration.Instance.LoginProtectionTime), UnityEngine.Color.yellow);
+            }
         }
 
         // Runs through the teleport queue.
@@ -162,6 +179,7 @@ namespace RocketMod_TPA
                 if ( value.Key == null || value.Value == null)
                     return;
                 value.Key.Teleport(value.Value);
+                Logger.Log(string.Format("Player: {0} [{1}] ({2}), has TPA'd to player: {3} [{4}] ({5}), at location: {6}.", value.Key.CharacterName, value.Key.SteamName, value.Key.CSteamID, value.Value.CharacterName, value.Value.SteamName, value.Value.CSteamID, value.Value.Player.transform.position));
             }
         }
     }

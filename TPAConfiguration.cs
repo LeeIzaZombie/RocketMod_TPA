@@ -11,9 +11,11 @@ namespace RocketMod_TPA
         public bool CancelOnBleeding = false;
         public bool CancelOnHurt = false;
         public bool NinjaTP = false;
-        public int NinjaEffectID = 45;
+        public ushort NinjaEffectID = 45;
         public bool TPATeleportProtection = false;
         public int TPATeleportProtectionSeconds = 15;
+        public bool UseLoginProtection = false;
+        public int LoginProtectionTime = 30;
 
         public void LoadDefaults()
         {
