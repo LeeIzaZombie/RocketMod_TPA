@@ -15,6 +15,8 @@ namespace RocketMod_TPA
     {
         #region Declarations
         internal static Dictionary<CSteamID, CSteamID> requests = new Dictionary<CSteamID, CSteamID>();
+        // Queue to sync delayed teleports to main thread.
+        internal static Queue<KeyValuePair<UnturnedPlayer, UnturnedPlayer>> teleportQueue = new Queue<KeyValuePair<UnturnedPlayer, UnturnedPlayer>>();
         private Dictionary<CSteamID, DateTime> coolDown = new Dictionary<CSteamID, DateTime>();
         private Dictionary<CSteamID, byte> health = new Dictionary<CSteamID, byte>();
 
@@ -104,7 +106,7 @@ namespace RocketMod_TPA
                     {
                         UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
 
-                        if (teleporter == null || IsInvalid(requests[player.CSteamID]))
+                        if (teleporter.Player == null || IsInvalid(requests[player.CSteamID]))
                         {
                             UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
                             lock (requests)
@@ -168,8 +170,8 @@ namespace RocketMod_TPA
                         UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
                         lock (requests)
                             requests.Remove(player.CSteamID);
-                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter == null ? "?" : teleporter.CharacterName), Color.yellow);
-                        if (teleporter != null)
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter.Player == null ? "?" : teleporter.CharacterName), Color.yellow);
+                        if (teleporter.Player != null)
                             UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_denied_1", player.CharacterName), Color.red);
                         return;
                     }
@@ -354,7 +356,11 @@ namespace RocketMod_TPA
             {
                 EffectManager.sendEffect((ushort)PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
             }
-            player.Teleport(target);
+            lock (teleportQueue)
+            {
+                teleportQueue.Enqueue(new KeyValuePair<UnturnedPlayer, UnturnedPlayer>(player, target));
+            }
+            //player.Teleport(target);
             //if (PluginTPA.Instance.Configuration.Instance.TPADoubleTap)
             //{
             //    Thread.Sleep(PluginTPA.Instance.Configuration.Instance.DoubleTapDelaySeconds * 1000);

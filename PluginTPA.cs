@@ -148,6 +148,22 @@ namespace RocketMod_TPA
                     CommandTPA.requests.Remove(player.CSteamID);
             }
         }
+
+        // Runs through the teleport queue.
+        public void Update()
+        {
+            if (CommandTPA.teleportQueue.Count > 0)
+            {
+                KeyValuePair<UnturnedPlayer, UnturnedPlayer> value;
+                lock (CommandTPA.teleportQueue)
+                {
+                    value = CommandTPA.teleportQueue.Dequeue();
+                }
+                if ( value.Key == null || value.Value == null)
+                    return;
+                value.Key.Teleport(value.Value);
+            }
+        }
     }
 
     public static class Extensions
