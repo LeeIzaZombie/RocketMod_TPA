@@ -380,8 +380,10 @@ namespace RocketMod_TPA
             // Don't execute if the player already has god mode enabled.
             if (!features.GodMode && (!protections.Protected || (protections.Protected && protections.LoginProtection)))
             {
-                protections.LoginProtection = false;
-                protections.Protected = true;
+                if (!protections.LoginProtection)
+                    protections.Protected = true;
+                else
+                    protections.LoginProtection = false;
                 UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_enabled", protectTime), Color.yellow);
                 CSteamID tID = target.CSteamID;
                 Thread.Sleep(protectTime * 1000);
