@@ -1,25 +1,24 @@
 ﻿using Rocket.API;
-using Rocket.Core.Assets;
 
 namespace RocketMod_TPA
 {
     public class TPAConfiguration : IRocketPluginConfiguration
     {
-        public int TPACoolDownSeconds, TPADelaySeconds, NinjaEffectID;
-        public bool TPADelay, CancelOnBleeding, CancelOnHurt, TPACoolDown, NinjaTP;
+        public bool TPACoolDown = false;
+        public int TPACoolDownSeconds = 20;
+        public bool TPADelay = false;
+        public int TPADelaySeconds = 10;
+        public bool CancelOnBleeding = false;
+        public bool CancelOnHurt = false;
+        public bool NinjaTP = false;
+        public ushort NinjaEffectID = 45;
+        public bool TPATeleportProtection = false;
+        public int TPATeleportProtectionSeconds = 15;
+        public bool UseLoginProtection = false;
+        public int LoginProtectionTime = 30;
 
         public void LoadDefaults()
         {
-            this.TPACoolDown = false;
-            this.TPACoolDownSeconds = 20;
-            this.TPADelay = false;
-            this.TPADelaySeconds = 10;
-            this.CancelOnBleeding = false;
-            this.CancelOnHurt = false;
-            this.NinjaTP = false;
-            this.NinjaEffectID = 45;
-            //this.DoubleTapDelaySeconds = 1;
-            //this.TPADoubleTap = true;
         }
     }
 }

@@ -1,10 +1,10 @@
 ﻿using Rocket.API;
-using Rocket.Core.Plugins;
 using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
 using SDG.Unturned;
 using Steamworks;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
@@ -14,17 +14,11 @@ namespace RocketMod_TPA
     public class CommandTPA : IRocketCommand
     {
         #region Declarations
-        public static Dictionary<CSteamID, CSteamID> requests = new Dictionary<CSteamID, CSteamID>();
+        internal static Dictionary<CSteamID, CSteamID> requests = new Dictionary<CSteamID, CSteamID>();
+        // Queue to sync delayed teleports to main thread.
+        internal static Queue<KeyValuePair<UnturnedPlayer, UnturnedPlayer>> teleportQueue = new Queue<KeyValuePair<UnturnedPlayer, UnturnedPlayer>>();
         private Dictionary<CSteamID, DateTime> coolDown = new Dictionary<CSteamID, DateTime>();
         private Dictionary<CSteamID, byte> health = new Dictionary<CSteamID, byte>();
-
-        public bool AllowFromConsole
-        {
-            get
-            {
-                return false;
-            }
-        }
 
         public List<string> Permissions
         {
@@ -42,14 +36,6 @@ namespace RocketMod_TPA
             get
             {
                 return AllowedCaller.Player;
-            }
-        }
-
-        public bool RunFromConsole
-        {
-            get
-            {
-                return false;
             }
         }
 
@@ -101,166 +87,194 @@ namespace RocketMod_TPA
                 return;
             }
             #endregion
-
-            #region Accept
-
-            if (command[0].ToString().ToLower() == "accept" || command[0].ToString().ToLower() == "a" || command[0].ToString().ToLower() == "yes")
+            CSteamID targetID = CSteamID.Nil;
+            string commandValue = string.Join(" ", command);
+            switch (commandValue.ToLower())
             {
-                if (!player.HasPermission("tpa.accept") && !player.IsAdmin)
-                {
-                    UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_accept"), Color.red);
+                #region Accept
+                // Accept a TPA.
+                case "accept":
+                case "a":
+                case "yes":
+                    if (!player.HasPermission("tpa.accept") && !player.IsAdmin)
+                    {
+                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_accept"), Color.red);
+                        return;
+                    }
+
+                    if (requests.ContainsKey(player.CSteamID))
+                    {
+                        UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
+
+                        if (teleporter.Player == null || IsInvalid(requests[player.CSteamID]))
+                        {
+                            UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
+                            lock (requests)
+                                requests.Remove(player.CSteamID);
+                            return;
+                        }
+
+                        if (teleporter.Stance == EPlayerStance.DRIVING || teleporter.Stance == EPlayerStance.SITTING)
+                        {
+                            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("YouInCar"), Color.red);
+                            UnturnedChat.Say(caller, PluginTPA.Instance.Translate("PlayerInCar"), Color.red);
+                            lock (requests)
+                                requests.Remove(player.CSteamID);
+                            return;
+                        }
+
+                        if (PluginTPA.Instance.Configuration.Instance.TPADelay)
+                        {
+                            DelayTP(player, teleporter, PluginTPA.Instance.Configuration.Instance.TPADelaySeconds);
+                            return;
+                        }
+
+                        if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && teleporter.Bleeding)
+                        {
+                            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
+                            requests.Remove(player.CSteamID);
+                            return;
+                        }
+
+                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted", teleporter.CharacterName), Color.yellow);
+                        UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_accepted_1", player.CharacterName), Color.yellow);
+                        //teleporter.Teleport(player);
+                        TPplayer(teleporter, player);
+                        requests.Remove(player.CSteamID);
+                        if (PluginTPA.Instance.Configuration.Instance.TPATeleportProtection)
+                        {
+                            new Thread(() =>
+                            {
+                                TPProtect(teleporter, PluginTPA.Instance.Configuration.Instance.TPATeleportProtectionSeconds);
+                            })
+                            {
+                                IsBackground = true
+                            }.Start();
+                        }
+                        return;
+                    }
+                    else
+                    {
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
+                        return;
+                    }
+                #endregion
+
+                #region Deny
+                // Deny a TPA
+                case "deny":
+                case "d":
+                case "no":
+                    if (requests.ContainsKey(player.CSteamID))
+                    {
+                        UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
+                        lock (requests)
+                            requests.Remove(player.CSteamID);
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter.Player == null ? "?" : teleporter.CharacterName), Color.yellow);
+                        if (teleporter.Player != null)
+                            UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_denied_1", player.CharacterName), Color.red);
+                        return;
+                    }
+                    else
+                    {
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
+                        return;
+                    }
+                #endregion
+
+                #region Abort
+                // Abort a TPA.
+                case "abort":
+                    targetID = requests.FirstOrDefault(tID => tID.Value == player.CSteamID).Key;
+                    if (targetID != CSteamID.Nil)
+                    {
+                        lock (requests)
+                            requests.Remove(targetID);
+                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_abort"), Color.yellow);
+                        UnturnedChat.Say(targetID, PluginTPA.Instance.Translate("request_abort_target", player.CharacterName), Color.yellow);
+                        return;
+                    }
+                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
                     return;
-                }
+                #endregion
 
-                if (requests.ContainsKey(player.CSteamID))
-                {
-                    UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
+                #region Send
+                // Send a TPA.
+                default:
+                    if (!player.HasPermission("tpa.send"))
+                    {
+                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_send"), Color.red);
+                        return;
+                    }
 
-                    if (teleporter == null || !CheckPlayer(requests[player.CSteamID]))
+                    UnturnedPlayer requestTo = UnturnedPlayer.FromName(commandValue);
+
+                    if (requestTo == null)
                     {
                         UnturnedChat.Say(caller, PluginTPA.Instance.Translate("playerNotFound"), Color.red);
-                        requests.Remove(player.CSteamID);
+                        return;
+                    }
+                    if (requestTo.CSteamID == player.CSteamID)
+                    {
+                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_sent_self"), Color.red);
                         return;
                     }
 
-                    if (teleporter.Stance == EPlayerStance.DRIVING || teleporter.Stance == EPlayerStance.SITTING)
+                    if (PluginTPA.Instance.Configuration.Instance.TPACoolDown)
                     {
-                        UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("YouInCar"), Color.red);
-                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("PlayerInCar"), Color.red);
-                        requests.Remove(player.CSteamID);
-                        return;
+                        if (coolDown.ContainsKey(player.CSteamID))
+                        {
+                            int timeLeft = Convert.ToInt32(System.Math.Abs((DateTime.Now - coolDown[player.CSteamID]).TotalSeconds));
+                            if (timeLeft < PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds)
+                            {
+                                UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_cooldown", PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds), Color.red);
+                                UnturnedChat.Say(caller, PluginTPA.Instance.Translate("TimeLeft", (PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds - timeLeft), Color.yellow));
+                                return;
+                            }
+                            coolDown.Remove(player.CSteamID);
+                        }
                     }
 
-                    if (PluginTPA.Instance.Configuration.Instance.TPADelay)
+                    if (requests.ContainsKey(requestTo.CSteamID))
                     {
-                        DelayTP(player, teleporter, PluginTPA.Instance.Configuration.Instance.TPADelaySeconds);
-                        return;
+                        if (requests[requestTo.CSteamID] == player.CSteamID)
+                        {
+                            UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_pending"), Color.red);
+                            return;
+                        }
                     }
 
-                    if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && teleporter.Bleeding)
+                    targetID = requests.FirstOrDefault(id => id.Value == player.CSteamID).Key;
+
+                    lock (requests)
                     {
-                        UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
-                        requests.Remove(player.CSteamID);
-                        return;
+                        // Switch a request to a different player if sent to a different player.
+                        if (targetID != CSteamID.Nil && targetID != requestTo.CSteamID)
+                        {
+                            requests.Remove(targetID);
+                            UnturnedChat.Say(targetID, PluginTPA.Instance.Translate("request_abort_target", player.CharacterName), Color.yellow);
+                        }
+                        if (requests.ContainsKey(requestTo.CSteamID))
+                            requests[requestTo.CSteamID] = player.CSteamID;
+                        else
+                            requests.Add(requestTo.CSteamID, player.CSteamID);
                     }
 
-                    UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted", teleporter.CharacterName), Color.yellow);
-                    UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_accepted_1", player.CharacterName), Color.yellow);
-                    //teleporter.Teleport(player);
-                    TPplayer(teleporter, player);
-                    requests.Remove(player.CSteamID);
-                    return;
-                }
-                else
-                {
-                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
-                    return;
-                }
-            }
+                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_sent", requestTo.CharacterName), Color.yellow);
+                    UnturnedChat.Say(requestTo, PluginTPA.Instance.Translate("request_sent_1", player.CharacterName), Color.yellow);
 
-            #endregion
 
-            #region Deny
-
-            if (command[0].ToString() == "deny" || command[0].ToString().ToLower() == "d" || command[0].ToString().ToLower() == "no")
-            {
-                if (requests.ContainsKey(player.CSteamID))
-                {
-                    UnturnedPlayer teleporter = UnturnedPlayer.FromCSteamID(requests[player.CSteamID]);
-                    requests.Remove(player.CSteamID);
-                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_denied", teleporter.CharacterName), Color.yellow);
-                    UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_denied_1", player.CharacterName), Color.red);
-                    return;
-                }
-                else
-                {
-                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red); return;
-                }
-            }
-            #endregion
-
-            #region Abort
-
-            if (command[0].ToString() == "abort")
-            {
-                bool flag = false;
-                foreach (Steamworks.CSteamID id in CommandTPA.requests.Keys)
-                {
-                    if (CommandTPA.requests[id] == player.CSteamID)
+                    if (coolDown.ContainsKey(player.CSteamID))
                     {
-                        CommandTPA.requests.Remove(id);
-                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_abort"), Color.yellow);
-                        flag = true;
-                        break;
+                        coolDown[player.CSteamID] = DateTime.Now;
                     }
-                }
-                if (!flag)
-                {
-                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_none"), Color.red);
-                }
-                return;
-            }
-            #endregion
-
-            #region Send
-
-            if (!player.HasPermission("tpa.send"))
-            {
-                UnturnedChat.Say(player, PluginTPA.Instance.Translate("nopermission_send"), Color.red);
-                return;
-            }
-
-            UnturnedPlayer requestTo = UnturnedPlayer.FromName(command[0].ToString());
-
-            if (requestTo == null)
-            {
-                UnturnedChat.Say(caller, PluginTPA.Instance.Translate("playerNotFound"), Color.red);
-                return;
-            }
-
-            if (PluginTPA.Instance.Configuration.Instance.TPACoolDown)
-            {
-                if (coolDown.ContainsKey(player.CSteamID))
-                {
-                    int timeLeft = Convert.ToInt32(System.Math.Abs((DateTime.Now - coolDown[player.CSteamID]).TotalSeconds));
-                    if (timeLeft < PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds)
+                    else
                     {
-                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("error_cooldown", PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds), Color.red);
-                        UnturnedChat.Say(caller, PluginTPA.Instance.Translate("TimeLeft", (PluginTPA.Instance.Configuration.Instance.TPACoolDownSeconds - timeLeft), Color.yellow));
-                        return;
+                        coolDown.Add(player.CSteamID, DateTime.Now);
                     }
-                    coolDown.Remove(player.CSteamID);
-                }
+                    break;
+                #endregion
             }
-
-            if (requests.ContainsKey(requestTo.CSteamID))
-            {
-                if (requests[requestTo.CSteamID] == player.CSteamID)
-                {
-                    UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_pending"), Color.red);
-                    return;
-                }
-            }
-
-            if (requests.ContainsKey(requestTo.CSteamID))
-                requests[requestTo.CSteamID] = player.CSteamID;
-            else
-                requests.Add(requestTo.CSteamID, player.CSteamID);
-
-            UnturnedChat.Say(caller, PluginTPA.Instance.Translate("request_sent", requestTo.CharacterName), Color.yellow);
-            UnturnedChat.Say(requestTo, PluginTPA.Instance.Translate("request_sent_1", player.CharacterName), Color.yellow);
-
-
-            if (coolDown.ContainsKey(player.CSteamID))
-            {
-                coolDown[player.CSteamID] = DateTime.Now;
-            }
-            else
-            {
-                coolDown.Add(player.CSteamID, DateTime.Now);
-            }
-            #endregion
-
         }
         
         private void DelayTP(UnturnedPlayer player, UnturnedPlayer teleporter, int delay)
@@ -271,31 +285,64 @@ namespace RocketMod_TPA
                 UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("Delay", delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
                 UnturnedChat.Say(player, PluginTPA.Instance.Translate("request_accepted_3", teleporter.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
 
-                if (this.health.ContainsKey(teleporter.CSteamID))
-                    this.health[teleporter.CSteamID] = teleporter.Health;
-                else
-                    this.health.Add(teleporter.CSteamID, teleporter.Health);
+                CSteamID playerID = player.CSteamID;
+                CSteamID teleporterID = teleporter.CSteamID;
+
+                lock (requests)
+                {
+                    if (this.health.ContainsKey(teleporterID))
+                        this.health[teleporterID] = teleporter.Health;
+                    else
+                        this.health.Add(teleporterID, teleporter.Health);
+                }
 
                 Thread.Sleep(delay * 1000);
+                // Check to see if the players are still on the server. Run cleanup and return if they aren't.
+                if (player == null || teleporter == null || IsInvalid(playerID) || IsInvalid(teleporterID))
+                {
+                    lock (requests)
+                    {
+                        if (requests.ContainsKey(playerID))
+                            requests.Remove(playerID);
+                        health.Remove(teleporterID);
+                    }
+                    if (teleporter != null)
+                        UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
+                    if (player != null)
+                        UnturnedChat.Say(player, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
+                    return;
+                }
 
                 if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && teleporter.Bleeding)
                 {
                     UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
-                    requests.Remove(player.CSteamID);
+                    lock (requests)
+                    {
+                        requests.Remove(player.CSteamID);
+                        health.Remove(teleporter.CSteamID);
+                    }
                 }
                 else if (PluginTPA.Instance.Configuration.Instance.CancelOnHurt && health.ContainsKey(teleporter.CSteamID) && health[teleporter.CSteamID] > teleporter.Health)
                 {
                     UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("error_hurt"), Color.red);
-                    requests.Remove(player.CSteamID);
-                    this.health.Remove(teleporter.CSteamID);
+                    lock (requests)
+                    {
+                        requests.Remove(player.CSteamID);
+                        health.Remove(teleporter.CSteamID);
+                    }
                 }
                 else
                 {
                     UnturnedChat.Say(teleporter, PluginTPA.Instance.Translate("request_success"), Color.yellow);
                     //teleporter.Teleport(player);
                     TPplayer(teleporter, player);
-                    requests.Remove(player.CSteamID);
-                    this.health.Remove(teleporter.CSteamID);
+                    lock (requests)
+                    {
+                        requests.Remove(player.CSteamID);
+                        health.Remove(teleporter.CSteamID);
+                    }
+                    if (PluginTPA.Instance.Configuration.Instance.TPATeleportProtection)
+                        TPProtect(teleporter, PluginTPA.Instance.Configuration.Instance.TPATeleportProtectionSeconds);
                 }
             }))
             {
@@ -307,9 +354,13 @@ namespace RocketMod_TPA
         {
             if (PluginTPA.Instance.Configuration.Instance.NinjaTP)
             {
-                EffectManager.sendEffect((ushort)PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
+                EffectManager.sendEffect(PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, player.Position);
             }
-            player.Teleport(target);
+            lock (teleportQueue)
+            {
+                teleportQueue.Enqueue(new KeyValuePair<UnturnedPlayer, UnturnedPlayer>(player, target));
+            }
+            //player.Teleport(target);
             //if (PluginTPA.Instance.Configuration.Instance.TPADoubleTap)
             //{
             //    Thread.Sleep(PluginTPA.Instance.Configuration.Instance.DoubleTapDelaySeconds * 1000);
@@ -317,18 +368,31 @@ namespace RocketMod_TPA
             //}
         }
 
-        private bool CheckPlayer(Steamworks.CSteamID plr)
+        private bool IsInvalid(CSteamID plrID)
         {
-            bool flag = false;
-            foreach (SteamPlayer sp in Provider.clients)
-            {
-                if (sp.playerID.steamID == plr)
-                {
-                    flag = true;
-                }
-            }
+            return Provider.clients.FirstOrDefault(id => id.playerID.steamID == plrID) == null;
+        }
 
-            return flag;
+        private void TPProtect(UnturnedPlayer target, int protectTime)
+        {
+            UnturnedPlayerFeatures features = target.GetComponent<UnturnedPlayerFeatures>();
+            TPAProtectionComponent protections = target.GetComponent<TPAProtectionComponent>();
+            // Don't execute if the player already has god mode enabled.
+            if (!features.GodMode && (!protections.Protected || (protections.Protected && protections.LoginProtection)))
+            {
+                if (!protections.LoginProtection)
+                    protections.Protected = true;
+                else
+                    protections.LoginProtection = false;
+                UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_enabled", protectTime), Color.yellow);
+                CSteamID tID = target.CSteamID;
+                Thread.Sleep(protectTime * 1000);
+                // Check to see if the players are still on the server, return if they aren't.
+                if (target == null || IsInvalid(tID))
+                    return;
+                UnturnedChat.Say(target, PluginTPA.Instance.Translate("teleport_protection_disabled"), Color.yellow);
+                protections.Protected = false;
+            }
         }
     }
 }
