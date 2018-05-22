@@ -32,51 +32,31 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\Assembly-CSharp.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="Rocket.API, Version=5.0.0.467, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Rocket.API.5.0.0.467\lib\net35\Rocket.API.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\Assembly-CSharp-firstpass.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="Rocket.Compatibility, Version=5.0.0.467, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Rocket.Compatibility.5.0.0.467\lib\net35\Rocket.Compatibility.dll</HintPath>
     </Reference>
-    <Reference Include="Rocket.API, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\Rocket.API.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="Rocket.Core, Version=5.0.0.467, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Rocket.Core.5.0.0.467\lib\net35\Rocket.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Rocket.Core, Version=2.4.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\Rocket.Core.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Rocket.Unturned, Version=4.9.5.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\Rocket.Unturned.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="Rocket.UnityEngine, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Rocket.UnityEngine.5.0.0.29\lib\net35\Rocket.UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="System.Core" />
-    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\UnityEngine.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CommandTPA.cs" />
-    <Compile Include="PluginTPA.cs" />
-    <Compile Include="TPAConfiguration.cs" />
+    <Compile Include="CommandTpa.cs" />
+    <Compile Include="CommandTpaAbort.cs" />
+    <Compile Include="CommandTpaAccept.cs" />
+    <Compile Include="CommandTpaDeny.cs" />
+    <Compile Include="PluginTpa.cs" />
+    <Compile Include="TpaConfiguration.cs" />
     <Compile Include="AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="lib\Assembly-CSharp-firstpass.dll" />
-    <Content Include="lib\Assembly-CSharp.dll" />
-    <Content Include="lib\Rocket.API.dll" />
-    <Content Include="lib\Rocket.Core.dll" />
-    <Content Include="lib\Rocket.Unturned.dll" />
-    <Content Include="lib\UnityEngine.dll" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
