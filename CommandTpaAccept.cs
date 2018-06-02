@@ -31,7 +31,7 @@ namespace RocketMod_TPA
 
         public void Execute(ICommandContext context)
         {
-            var player = ((IPlayerUser)context.User).GetPlayer().Extend();
+            var player = ((IPlayerUser)context.User).GetPlayer();
 
             if (!_tpaPlugin.Requests.ContainsKey(player))
             {
@@ -72,7 +72,7 @@ namespace RocketMod_TPA
             }
             */
 
-            player.User.SendLocalizedMessage(_tpaPlugin.Translations, "request_accepted", Color.Yellow, teleporter.Name);
+            player.GetUser().SendLocalizedMessage(_tpaPlugin.Translations, "request_accepted", Color.Yellow, teleporter.Name);
 
             teleporter.GetUser().SendLocalizedMessage(_tpaPlugin.Translations, "request_accepted_1", Color.Yellow, player.Name);
 

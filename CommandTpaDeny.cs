@@ -31,19 +31,19 @@ namespace RocketMod_TPA
 
         public void Execute(ICommandContext context)
         {
-            var player = ((IPlayerUser)context.User).GetPlayer().Extend();
+            var player = ((IPlayerUser)context.User).GetPlayer();
 
             if (_tpaPlugin.Requests.ContainsKey(player))
             {
                 IPlayer teleporter = _tpaPlugin.Requests[player];
                 _tpaPlugin.Requests.Remove(player);
 
-                player.User.SendLocalizedMessage(_tpaPlugin.Translations, "request_denied", Color.Yellow, teleporter.Name);
+                player.GetUser().SendLocalizedMessage(_tpaPlugin.Translations, "request_denied", Color.Yellow, teleporter.Name);
                 teleporter.GetUser().SendLocalizedMessage(_tpaPlugin.Translations, "request_denied_1", Color.Red, player.Name);
                 return;
             }
 
-            player.User.SendLocalizedMessage(_tpaPlugin.Translations, "request_none", Color.Red);
+            player.GetUser().SendLocalizedMessage(_tpaPlugin.Translations, "request_none", Color.Red);
         }
     }
 }

@@ -54,7 +54,7 @@ namespace RocketMod_TPA
                 throw new CommandWrongUsageException();
             }
 
-            var player = ((IPlayerUser)context.User).GetPlayer().Extend();
+            var player = ((IPlayerUser)context.User).GetPlayer();
             if (permissionProvider.CheckPermission(player, "tpa.send") != PermissionResult.Grant)
             {
                 throw new NotEnoughPermissionsException(context.User, "tpa.send");

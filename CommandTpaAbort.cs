@@ -32,7 +32,7 @@ namespace RocketMod_TPA
 
         public void Execute(ICommandContext context)
         {
-            var player = ((IPlayerUser)context.User).GetPlayer().Extend();
+            var player = ((IPlayerUser)context.User).GetPlayer();
             bool removed = _tpaPlugin.Requests.Remove(player);
 
             if (removed)
