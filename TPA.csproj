@@ -23,11 +23,5 @@
     <PackageReference Include="Rocket.Core" Version="5.0.0.566">
         <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 	</PackageReference>
-    <PackageReference Include="Rocket.Unturned" Version="5.0.0.162" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="UnityEngine">
-      <HintPath>lib\UnityEngine.dll</HintPath>
-    </Reference>
   </ItemGroup>
 </Project>
