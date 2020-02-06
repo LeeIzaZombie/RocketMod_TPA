@@ -151,6 +151,13 @@ namespace RocketMod_TPA
                         doingDelayTP = false;
                         return;
                     }
+                    if (Player.Stance == EPlayerStance.DRIVING || Player.Stance == EPlayerStance.SITTING)
+                    {
+                        doingDelayTP = false;
+                        UnturnedChat.Say(Player, PluginTPA.Instance.Translate("error_incar"), Color.red);
+                        UnturnedChat.Say(target, PluginTPA.Instance.Translate("error_incar1", Player.CharacterName), Color.red);
+                        return;
+                    }
                     if ((DateTime.Now - delayTPSartTime).TotalSeconds < PluginTPA.Instance.Configuration.Instance.TPADelaySeconds)
                     {
                         if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && Player.Bleeding)

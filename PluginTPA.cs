@@ -42,6 +42,8 @@ namespace RocketMod_TPA
                     { "error_hurt1", "Player: {0} couldn't be teleported because they got hurt." },
                     { "error_movedtoomuch", "You've moved too much to be teleported!" },
                     { "error_movedtoomuch1", "Player: {0} couldn't be teleported because they moved too much." },
+                    { "error_incar", "TPA canceled, you have entered into a vehicle!" },
+                    { "error_incar1", "Player: {0} couldtn't be teleported, because they entered a vehicle." },
                     { "error_player_left_server", "TPA has failed, the other player has left the server." }, //New
                     { "help_line_1", "TPA allows you to request a teleport to another player." },
                     { "request_success", "Your teleportation has been successful!" },
