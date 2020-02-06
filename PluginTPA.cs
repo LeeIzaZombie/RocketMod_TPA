@@ -4,6 +4,8 @@ using Rocket.Core.Plugins;
 using Rocket.Unturned;
 using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
+using SDG.Unturned;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,7 +37,11 @@ namespace RocketMod_TPA
                     { "nopermission_accept", "You do not have permission to accept TPA requests." },
                     { "error_cooldown", "You may only send requests every {0} seconds." }, //Updated
                     { "error_bleeding", "You may not teleport when bleeding, resend TPA when you're safe." },
+                    { "error_bleeding1", "Player: {0} couldn't be teleported because they're bleeding." },
                     { "error_hurt", "You may not teleport when you're hurt!" },
+                    { "error_hurt1", "Player: {0} couldn't be teleported because they got hurt." },
+                    { "error_movedtoomuch", "You've moved too much to be teleported!" },
+                    { "error_movedtoomuch1", "Player: {0} couldn't be teleported because they moved too much." },
                     { "error_player_left_server", "TPA has failed, the other player has left the server." }, //New
                     { "help_line_1", "TPA allows you to request a teleport to another player." },
                     { "request_success", "Your teleportation has been successful!" },
@@ -68,11 +74,13 @@ namespace RocketMod_TPA
             string str2 = Configuration.Instance.TPACoolDown.Format();
             string str3 = Configuration.Instance.CancelOnBleeding.Format();
             string str4 = Configuration.Instance.CancelOnHurt.Format();
+            string str5 = Configuration.Instance.CancelOnMoved.Format();
             string str6 = Configuration.Instance.NinjaTP.Format();
             string str7 = Configuration.Instance.TPATeleportProtection.Format();
             string str8 = Configuration.Instance.UseLoginProtection.Format();
             int num1 = Configuration.Instance.TPACoolDownSeconds;
             int num2 = Configuration.Instance.TPADelaySeconds;
+            float num3 = Configuration.Instance.MaxAllowedMoveDistance;
             int num4 = Configuration.Instance.NinjaEffectID;
             int num5 = Configuration.Instance.TPATeleportProtectionSeconds;
             int num6 = Configuration.Instance.LoginProtectionTime;
@@ -87,6 +95,7 @@ namespace RocketMod_TPA
             Logger.LogWarning("TPA teleport protection: " + str7 + ", Protection time: " + num5);
             Logger.LogWarning("Login protection: " + str8 + ", Protection time: " + num6);
             Logger.LogWarning("[Delay] Cancel teleport if hurt: " + str4);
+            Logger.LogWarning("[Delay] Cancel on movement: " + str5 + ", Allowed Distance: " + num3);
             Logger.LogWarning("...");
             Logger.LogWarning("Checking for problems:");
             int i = 0;
@@ -103,6 +112,11 @@ namespace RocketMod_TPA
             if (num2 < 0)
             {
                 Logger.LogError("Delay Seconds configuration is invalid, please fix it.");
+                i++;
+            }
+            if (num3 < 0)
+            {
+                Logger.LogError("MaxAllowedMoveDistance value negative, please fix it.");
                 i++;
             }
             if (num5 < 0)
@@ -127,35 +141,15 @@ namespace RocketMod_TPA
             Logger.LogWarning("Always welcome to suggestions! If you find a bug, please report it!");
 
             U.Events.OnPlayerConnected += TPA_PlayerJoin;
-            U.Events.OnPlayerDisconnected += TPA_PlayerLeave;
         }
 
         protected override void Unload()
         {
             U.Events.OnPlayerConnected -= TPA_PlayerJoin;
-            U.Events.OnPlayerDisconnected -= TPA_PlayerLeave;
-        }
-
-        private void TPA_PlayerLeave(UnturnedPlayer player)
-        {
-            if (player != null)
-            {
-                if (CommandTPA.requests.ContainsKey(player.CSteamID))
-                {
-                    lock (CommandTPA.requests)
-                        CommandTPA.requests.Remove(player.CSteamID);
-                }
-                player.GetComponent<TPAProtectionComponent>().EventCleanup();
-            }
         }
 
         private void TPA_PlayerJoin(UnturnedPlayer player)
         {
-            if (CommandTPA.requests.ContainsKey(player.CSteamID))
-            {
-                lock (CommandTPA.requests)
-                    CommandTPA.requests.Remove(player.CSteamID);
-            }
             if (Configuration.Instance.UseLoginProtection)
             {
                 TPAProtectionComponent pc = player.GetComponent<TPAProtectionComponent>();
@@ -163,23 +157,6 @@ namespace RocketMod_TPA
                 pc.LoginProtectionStart = DateTime.Now;
                 pc.Protected = true;
                 UnturnedChat.Say(player, Translate("login_protection_enabled", Configuration.Instance.LoginProtectionTime), UnityEngine.Color.yellow);
-            }
-        }
-
-        // Runs through the teleport queue.
-        public void Update()
-        {
-            if (CommandTPA.teleportQueue.Count > 0)
-            {
-                KeyValuePair<UnturnedPlayer, UnturnedPlayer> value;
-                lock (CommandTPA.teleportQueue)
-                {
-                    value = CommandTPA.teleportQueue.Dequeue();
-                }
-                if ( value.Key == null || value.Value == null)
-                    return;
-                value.Key.Teleport(value.Value);
-                Logger.Log(string.Format("Player: {0} [{1}] ({2}), has TPA'd to player: {3} [{4}] ({5}), at location: {6}.", value.Key.CharacterName, value.Key.SteamName, value.Key.CSteamID, value.Value.CharacterName, value.Value.SteamName, value.Value.CSteamID, value.Value.Player.transform.position));
             }
         }
     }
@@ -190,6 +167,11 @@ namespace RocketMod_TPA
         public static string Format(this bool value)
         {
             return value ? "enabled" : "disabled";
+        }
+
+        public static bool IsInvalid(this CSteamID plrID)
+        {
+            return Provider.clients.FirstOrDefault(id => id.playerID.steamID == plrID) == null;
         }
     }
 }

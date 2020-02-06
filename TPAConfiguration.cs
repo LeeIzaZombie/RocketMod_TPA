@@ -10,6 +10,9 @@ namespace RocketMod_TPA
         public int TPADelaySeconds = 10;
         public bool CancelOnBleeding = false;
         public bool CancelOnHurt = false;
+        public bool CancelOnMoved = false;
+        public float MaxAllowedMoveDistance = 5.0f;
+
         public bool NinjaTP = false;
         public ushort NinjaEffectID = 45;
         public bool TPATeleportProtection = false;

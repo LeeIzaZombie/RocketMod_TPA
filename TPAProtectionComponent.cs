@@ -1,9 +1,14 @@
-﻿using Rocket.Unturned.Chat;
+﻿using Rocket.API;
+using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
+using SDG.Unturned;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
+using Logger = Rocket.Core.Logging.Logger;
 
 namespace RocketMod_TPA
 {
@@ -12,7 +17,17 @@ namespace RocketMod_TPA
         private bool protect = false;
         internal bool LoginProtection = false;
         internal DateTime LoginProtectionStart;
+        private bool teleportProtection = false;
+        private DateTime teleportProtectionStart;
+        private bool doingDelayTP = false;
+        private DateTime delayTPSartTime;
+        private Vector3 curLocDelayTP;
+        internal int delay;
+        internal DateTime lastCooldownStart;
+        private UnturnedPlayer target = null;
+        internal List<CSteamID> TPARequestList = new List<CSteamID>();
         private byte health;
+        private byte delayTPHealth;
         private byte water;
         private byte food;
         private byte virus;
@@ -49,21 +64,125 @@ namespace RocketMod_TPA
             }
         }
 
-        internal void EventCleanup()
+        internal void RunTeleportProtections()
+        {
+            UnturnedPlayerFeatures features = Player.GetComponent<UnturnedPlayerFeatures>();
+            // Don't execute if the player already has god mode enabled.
+            if (!features.GodMode && (!Protected || (Protected && LoginProtection)))
+            {
+                if (!LoginProtection)
+                    Protected = true;
+                else
+                    LoginProtection = false;
+                teleportProtection = true;
+                teleportProtectionStart = DateTime.Now;
+                UnturnedChat.Say(Player, PluginTPA.Instance.Translate("teleport_protection_enabled", PluginTPA.Instance.Configuration.Instance.TPATeleportProtectionSeconds), Color.yellow);
+            }
+        }
+
+        // to be ran on the requesting player PC.
+        internal void DelayTP(UnturnedPlayer target)
+        {
+            delay = PluginTPA.Instance.Configuration.Instance.TPADelaySeconds;
+            UnturnedChat.Say(Player, PluginTPA.Instance.Translate("request_accepted_2", target.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
+            UnturnedChat.Say(target, PluginTPA.Instance.Translate("request_accepted_3", Player.CharacterName, delay, PluginTPA.Instance.Translate("Seconds")), Color.yellow);
+
+            this.target = target;
+            delayTPHealth = Player.Health;
+            doingDelayTP = true;
+            delayTPSartTime = DateTime.Now;
+            curLocDelayTP = Player.Position;
+
+
+        }
+
+        // to be ran on the requesting player PC.
+        internal void TPplayer(UnturnedPlayer target)
+        {
+            if (PluginTPA.Instance.Configuration.Instance.NinjaTP)
+                EffectManager.sendEffect(PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, Player.Position);
+            Player.Teleport(target);
+            Logger.Log(string.Format("Player: {0} [{1}] ({2}), has TPA'd to player: {3} [{4}] ({5}), at location: {6}.", Player.CharacterName, Player.SteamName, Player.CSteamID, target.CharacterName, target.SteamName, target.CSteamID, target.Player.transform.position));
+        }
+
+        private void OnDestroy()
         {
             if (Protected)
                 Protected = false;
+            TPARequestList.Clear();
+            if (doingDelayTP)
+            {
+                if (target != null && !target.CSteamID.IsInvalid())
+                {
+                    UnturnedChat.Say(target, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
+                }
+            }
         }
 
         public void FixedUpdate()
         {
-            if (PluginTPA.Instance.Configuration.Instance.UseLoginProtection && Protected && LoginProtection)
+            if (PluginTPA.Instance.State == PluginState.Loaded)
             {
-                if ((DateTime.Now - LoginProtectionStart).TotalSeconds > PluginTPA.Instance.Configuration.Instance.LoginProtectionTime)
+                if (PluginTPA.Instance.Configuration.Instance.UseLoginProtection && Protected && LoginProtection)
                 {
-                    LoginProtection = false;
-                    Protected = false;
-                    UnturnedChat.Say(Player, PluginTPA.Instance.Translate("login_protection_disabled", PluginTPA.Instance.Configuration.Instance.LoginProtectionTime), UnityEngine.Color.yellow);
+                    if ((DateTime.Now - LoginProtectionStart).TotalSeconds > PluginTPA.Instance.Configuration.Instance.LoginProtectionTime)
+                    {
+                        LoginProtection = false;
+                        Protected = false;
+                        UnturnedChat.Say(Player, PluginTPA.Instance.Translate("login_protection_disabled", PluginTPA.Instance.Configuration.Instance.LoginProtectionTime), UnityEngine.Color.yellow);
+                    }
+                }
+                if (PluginTPA.Instance.Configuration.Instance.TPATeleportProtection && Protected && teleportProtection)
+                {
+                    if ((DateTime.Now - teleportProtectionStart).TotalSeconds > PluginTPA.Instance.Configuration.Instance.TPATeleportProtectionSeconds)
+                    {
+                        teleportProtection = false;
+                        Protected = false;
+                        UnturnedChat.Say(Player, PluginTPA.Instance.Translate("teleport_protection_disabled"), Color.yellow);
+                    }
+                }
+
+                if (doingDelayTP)
+                {
+                    // Check to see if the players are still on the server. Run cleanup and return if they aren't.
+                    if (target == null || target.CSteamID.IsInvalid())
+                    {
+                        UnturnedChat.Say(Player, PluginTPA.Instance.Translate("error_player_left_server"), Color.red);
+                        doingDelayTP = false;
+                        return;
+                    }
+                    if ((DateTime.Now - delayTPSartTime).TotalSeconds < PluginTPA.Instance.Configuration.Instance.TPADelaySeconds)
+                    {
+                        if (PluginTPA.Instance.Configuration.Instance.CancelOnBleeding && Player.Bleeding)
+                        {
+                            doingDelayTP = false;
+                            UnturnedChat.Say(Player, PluginTPA.Instance.Translate("error_bleeding"), Color.red);
+                            UnturnedChat.Say(target, PluginTPA.Instance.Translate("error_bleeding1", Player.CharacterName), Color.red);
+                            return;
+                        }
+                        if (PluginTPA.Instance.Configuration.Instance.CancelOnHurt && delayTPHealth > Player.Health)
+                        {
+                            doingDelayTP = false;
+                            UnturnedChat.Say(Player, PluginTPA.Instance.Translate("error_hurt"), Color.red);
+                            UnturnedChat.Say(target, PluginTPA.Instance.Translate("error_hurt1", Player.CharacterName), Color.red);
+                            return;
+                        }
+                        if (PluginTPA.Instance.Configuration.Instance.CancelOnMoved && Vector3.Distance(Player.Position, curLocDelayTP) > PluginTPA.Instance.Configuration.Instance.MaxAllowedMoveDistance)
+                        {
+                            doingDelayTP = false;
+                            UnturnedChat.Say(Player, PluginTPA.Instance.Translate("error_movedtoomuch"), Color.red);
+                            UnturnedChat.Say(target, PluginTPA.Instance.Translate("error_movedtoomuch1", Player.CharacterName), Color.red);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        doingDelayTP = false;
+                        UnturnedChat.Say(Player, PluginTPA.Instance.Translate("request_success"), Color.yellow);
+                        TPplayer(target);
+                        if (PluginTPA.Instance.Configuration.Instance.TPATeleportProtection)
+                            RunTeleportProtections();
+                    }
                 }
             }
         }
