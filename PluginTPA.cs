@@ -52,6 +52,7 @@ namespace RocketMod_TPA
                     { "request_accepted_1", "{0} accepted your tpa request!" }, //Updated
                     { "request_accepted_2", "{0} accepted your tpa request and will teleport in {1} {2}." }, //Updated
                     { "request_accepted_3", "You've accepted {0}'s tpa request and they will teleport in {1} {2}." }, //Updated
+                    { "tpa_fail_obstructed", "TPA Failed, target location obstructed by nearby elements!" },
                     { "request_denied_1", "{0} denied your tpa request!" }, //Updated
                     { "request_sent", "You have sent a tpa request to {0}" }, //Updated
                     { "request_sent_1", "{0} sent you a tpa request, do /tpa accept to accept!" }, //Updated

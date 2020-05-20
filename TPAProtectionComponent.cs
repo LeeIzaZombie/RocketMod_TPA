@@ -101,7 +101,17 @@ namespace RocketMod_TPA
         {
             if (PluginTPA.Instance.Configuration.Instance.NinjaTP)
                 EffectManager.sendEffect(PluginTPA.Instance.Configuration.Instance.NinjaEffectID, 30, Player.Position);
-            Player.Teleport(target);
+            if (!Player.Player.teleportToLocation(target.Position, target.Rotation))
+            {
+                if (Player.IsAdmin)
+                {
+                    Player.Player.teleportToLocationUnsafe(target.Position, target.Rotation);
+                    return;
+                }
+                UnturnedChat.Say(Player, PluginTPA.Instance.Translate("tpa_fail_obstructed"));
+                UnturnedChat.Say(target, PluginTPA.Instance.Translate("tpa_fail_obstructed"));
+                return;
+            }
             Logger.Log(string.Format("Player: {0} [{1}] ({2}), has TPA'd to player: {3} [{4}] ({5}), at location: {6}.", Player.CharacterName, Player.SteamName, Player.CSteamID, target.CharacterName, target.SteamName, target.CSteamID, target.Player.transform.position));
         }
 
